@@ -1,0 +1,285 @@
+QUESTION: 
+Assignment 21: Online Auction & Bidding – Specification Document 
+Problem Statement: 
+Design and implement a Java console application for an Online Auction system that manages items, sellers, bidders, bids, auctions, and settlements. The application should demonstrate object-oriented principles and enforce bidding rules. 
+Class Requirements: 
+1.	AuctionItem 
+2.	Seller 
+3.	Bidder 
+4.	Auction 
+5.	Bid 
+6.	Winner 
+7.	Settlement 
+Business Rules: 
+1.	Auctions must have a start and end window; bids are valid only within the window. 
+2.	Each new bid must exceed the current highest bid. 
+3.	At auction close, the highest valid bid determines the winner. 
+4.	Settlement occurs after winner confirmation and payment. 
+5.	Each bid must link directly to an auction and bidder. 
+Console Interface Requirements: 
+1.	Menu-driven program: Add Seller / Add Item / Create Auction / Register Bidder 
+/ Place Bid / Close Auction / Settle Payment / Display Auctions / Exit 
+2.	Input validations must be performed for all user entries. 
+3.	Encapsulation must be followed for all attributes. 
+Expected Output Behavior: 
+•	Show bid acknowledgments with current highest bid. 
+•	Show auction close summary with winner and final price. 
+•	Show settlement receipt and item transfer status. 
+Questions for Students: 
+1.	Draw the UML Class Diagram for the above system. 
+2.	Implement the Classes with necessary Data Members and Methods for System and Business Rules. 
+3.	Use Aggregation, Inheritance and Polymorphism wherever required. 
+4.	Implement the main method for Menu Driven System. 
+
+SOLUTION:
+
+Import java.time.LocalDateTime;
+Import java.time.format.DateTimeFormatter;
+Import java.time.format.DateTimeParseException;
+Import java.util.*;
+Class AuctionItem {
+    Private static int counter = 1;
+    Private final int itemId;
+    Private final String name;
+    Private final String description;
+    Private final Seller seller;
+    Public AuctionItem(String name, String description, Seller seller) {
+        This.itemId = counter++;
+        This.name = name;
+        This.description = description;
+        This.seller = seller;
+    }
+    Public int getItemId() { return itemId; }
+    Public String getName() { return name; }
+    Public Seller getSeller() { return seller; }
+    Public String toString() { return “Item[“ + itemId + “] “ + name + “ – “ + description + “ (Seller: “ + seller.getName() + “)”; }
+}
+Class Seller {
+    Private static int counter = 1;
+    Private final int sellerId;
+    Private final String name;
+    Private final String contact;
+    Private final List<AuctionItem> items = new ArrayList<>();
+    Public Seller(String name, String contact) {
+        This.sellerId = counter++;
+        This.name = name;
+        This.contact = contact;
+    }
+    Public int getSellerId() { return sellerId; }
+    Public String getName() { return name; }
+    Public AuctionItem addItem(String itemName, String desc) {
+        AuctionItem item = new AuctionItem(itemName, desc, this);
+        Items.add(item);
+        Return item;
+    }
+    Public String toString() { return “Seller[“ + sellerId + “] “ + name; }
+}
+Class Bidder {
+    Private static int counter = 1;
+    Private final int bidderId;
+    Private final String name;
+    Private final String contact;
+    Public Bidder(String name, String contact) {
+        This.bidderId = counter++;
+        This.name = name;
+        This.contact = contact;
+    }
+    Public int getBidderId() { return bidderId; }
+    Public String getName() { return name; }
+    Public String toString() { return “Bidder[“ + bidderId + “] “ + name; }
+}
+Class Bid {
+    Private final Bidder bidder;
+    Private final double amount;
+    Private final LocalDateTime time;
+    Public Bid(Bidder bidder, double amount) {
+        This.bidder = bidder;
+        This.amount = amount;
+        This.time = LocalDateTime.now();
+    }
+    Public Bidder getBidder() { return bidder; }
+    Public double getAmount() { return amount; }
+    Public LocalDateTime getTime() { return time; }
+    Public String toString() {
+        Return “Bid “ + amount + “ by “ + bidder.getName() + “ at “ + time.format(DateTimeFormatter.ofPattern(“yyyy-MM-dd HH:mm”));
+    }
+}
+Class Auction {
+    Private static int counter = 1;
+    Private final int auctionId;
+    Private final AuctionItem item;
+    Private final LocalDateTime start;
+    Private final LocalDateTime end;
+    Private final List<Bid> bids = new ArrayList<>();
+    Private boolean closed = false;
+    Private Winner winner;
+    Private boolean settled = false;
+    Public Auction(AuctionItem item, LocalDateTime start, LocalDateTime end) {
+        This.auctionId = counter++;
+        This.item = item;
+        This.start = start;
+        This.end = end;
+    }
+    Public int getAuctionId() { return auctionId; }
+    Public boolean isClosed() { return closed; }
+    Public Winner getWinner() { return winner; }
+    Public boolean isSettled() { return settled; }
+    Public Optional<Bid> highestBid() {
+        Return bids.stream().max(Comparator.comparingDouble(Bid::getAmount));
+    }
+    Public String placeBid(Bid bid) {
+        LocalDateTime now = bid.getTime();
+        If (now.isBefore(start) || now.isAfter(end)) throw new IllegalArgumentException(“Bid outside auction time.”);
+        Optional<Bid> high = highestBid();
+        If (high.isPresent() && bid.getAmount() <= high.get().getAmount()) throw new IllegalArgumentException(“Bid must be higher than “ + high.get().getAmount());
+        Bids.add(bid);
+        Return “Bid accepted. Current highest: “ + bid.getAmount() + “ by “ + bid.getBidder().getName();
+    }
+    Public String closeAuction() {
+     If (closed) return “Already closed.”;
+        Closed = true;
+        Optional<Bid> high = highestBid();
+        If (high.isPresent()) {
+            Bid hb = high.get();
+            Winner = new Winner(this, hb.getBidder(), hb);
+            Return “Closed. Winner: “ + hb.getBidder().getName() + “ Amount: “ + hb.getAmount();
+        }
+        Return “Closed. No bids.”;
+    }
+    Public String settlePayment(boolean paid) {
+        If (!closed) return “Not closed.”;
+        If (winner == null) return “No winner.”;
+        If (settled) return “Already settled.”;
+        If (paid) {
+            Settled = true;
+            Return “Payment complete. “ + item.getName() + “ transferred to “ + winner.getBidder().getName();
+        }
+        Return “Payment pending.”;
+    }
+    Public String toString() {
+        String status = closed ? “CLOSED” : “OPEN”;
+        Optional<Bid> hb = highestBid();
+        String high = hb.map(b -> b.getAmount() + “ by “ + b.getBidder().getName()).orElse(“No bids”);
+        Return “Auction[“ + auctionId + “] “ + item.getName() + “ (“ + status + “) Highest: “ + high;    }
+   Public List<Bid> getBids() { return bids; }
+}
+Class Winner {
+    Private final Auction auction;
+    Private final Bidder bidder;
+    Private final Bid winningBid;
+    Public Winner(Auction auction, Bidder bidder, Bid winningBid) {
+        This.auction = auction;
+        This.bidder = bidder;
+        This.winningBid = winningBid;
+    }
+    Public Bidder getBidder() { return bidder; }
+    Public Bid getWinningBid() { return winningBid; }
+    Public String toString() { return “Winner “ + bidder.getName() + “ Amount “ + winningBid.getAmount(); }
+}
+Class Settlement {
+    Private final Winner winner;
+    Private final LocalDateTime settledAt;
+    Private final double amount;
+    Public Settlement(Winner winner, double amount) {
+        This.winner = winner;
+        This.amount = amount;
+        This.settledAt = LocalDateTime.now();
+    }   Public String toString() { 
+   Return “Settlement: “ + winner.getBidder().getName() + “ Amount “ + amount + “ Time “ + settledAt.format(DateTimeFormatter.ofPattern(“yyyy-MM-dd HH:mm”));    }
+}
+Public class OnlineAuctionApp {
+    Private final Scanner sc = new Scanner(System.in);
+    Private final List<Seller> sellers = new ArrayList<>();
+    Private final List<Bidder> bidders = new ArrayList<>();
+    Private final List<AuctionItem> items = new ArrayList<>();
+    Private final List<Auction> auctions = new ArrayList<>();
+    Private final List<Settlement> settlements = new ArrayList<>();
+    Private final DateTimeFormatter dtf = DateTimeFormatter.ofPattern(“yyyy-MM-dd HH:mm”);
+    Public static void main(String[] args) { new OnlineAuctionApp().run(); }
+    Void run() {
+        While (true) {
+            System.out.println(“\n1.Add Seller 2.Add Item 3.Create Auction 4.Register Bidder 5.Place Bid 6.Close Auction 7.Settle 8.Display 9.Exit”);
+            String c = sc.nextLine();
+            Switch © {
+                Case “1”: addSeller(); break;
+                Case “2”: addItem(); break;
+                Case “3”: createAuction(); break;
+                Case “4”: registerBidder(); break;
+                Case “5”: placeBid(); break;
+                Case “6”: closeAuction(); break;
+                Case “7”: settle(); break;
+                Case “8”: display(); break;
+                Case “9”: return;
+                Default: System.out.println(“Invalid”)
+   }   }    }
+    Void addSeller() {
+        System.out.print(“Name: “); String n = sc.nextLine();
+        System.out.print(“Contact: “); String c = sc.nextLine();
+        Seller s = new Seller(n, c); sellers.add(s);
+        System.out.println(“Added “ + s);
+    }
+    Void addItem() {
+        If (sellers.isEmpty()) { System.out.println(“No sellers.”); return; }
+        Sellers.forEach(System.out::println);
+        System.out.print(“Seller ID: “); int id = Integer.parseInt(sc.nextLine());
+        Seller s = sellers.stream().filter(x->x.getSellerId()==id).findFirst().orElse(null);
+        If (s==null){System.out.println(“Invalid”);return;}
+        System.out.print(“Item name: “); String n=sc.nextLine();
+        System.out.print(“Desc: “); String d=sc.nextLine();
+        AuctionItem it=s.addItem(n,d); items.add(it);
+        System.out.println(“Added “+it);
+    }
+    Void createAuction() {
+        If (items.isEmpty()) { System.out.println(“No items.”); return; }
+        Items.forEach(i->System.out.println(i.getItemId()+”) “+i));
+        System.out.print(“Item ID: “); int id=Integer.parseInt(sc.nextLine());
+        AuctionItem it=items.stream().filter(x->x.getItemId()==id).findFirst().orElse(null);
+        If(it==null){System.out.println(“Invalid”);return;}
+        System.out.print(“Start (yyyy-MM-dd HH:mm): “); LocalDateTime s=parseDT(sc.nextLine());
+        System.out.print(“End (yyyy-MM-dd HH:mm): “); LocalDateTime e=parseDT(sc.nextLine());
+       If(!e.isAfter(s)){System.out.println(“End after start”);return;}
+        Auction a=new Auction(it,s,e); auctions.add(a);
+        System.out.println(“Created “+a);
+    }
+    Void registerBidder() {
+        System.out.print(“Name: “); String n=sc.nextLine();
+        System.out.print(“Contact: “); String c=sc.nextLine();
+        Bidder b=new Bidder(n,c); bidders.add(b);
+        System.out.println(“Added “+b);
+    }
+    Void placeBid() {
+        Auctions.stream().filter(a->!a.isClosed()).forEach(a->System.out.println(a.getAuctionId()+”) “+a));
+        System.out.print(“Auction ID: “); int id=Integer.parseInt(sc.nextLine());
+        Auction a=auctions.stream().filter(x->x.getAuctionId()==id).findFirst().orElse(null);
+        If(a==null){System.out.println(“Invalid”);return;}
+        Bidders.forEach(System.out::println);
+        System.out.print(“Bidder ID: “); int bid=Integer.parseInt(sc.nextLine());
+        Bidder b=bidders.stream().filter(x->x.getBidderId()==bid).findFirst().orElse(null);
+        If(b==null){System.out.println(“Invalid”);return;}
+        System.out.print(“Amount: “); double amt=Double.parseDouble(sc.nextLine());
+        Try { System.out.println(a.placeBid(new Bid(b,amt))); } catch(Exception ex){System.out.println(ex.getMessage());}
+    }
+    Void closeAuction() {
+        Auctions.forEach(x->System.out.println(x.getAuctionId()+”) “+x));
+        System.out.print(“ID: “); int id=Integer.parseInt(sc.nextLine());
+        Auction a=auctions.stream().filter(x->x.getAuctionId()==id).findFirst().orElse(null);
+        If(a==null){System.out.println(“Invalid”);return;}
+        System.out.println(a.closeAuction());
+    }
+    Void settle() {
+        Auctions.stream().filter(a->a.isClosed()&&!a.isSettled()&&a.getWinner()!=null).forEach(x->System.out.println(x.getAuctionId()+”) “+x));
+        System.out.print(“ID: “); int id=Integer.parseInt(sc.nextLine());
+        Auction a=auctions.stream().filter(x->x.getAuctionId()==id).findFirst().orElse(null);
+        If(a==null){System.out.println(“Invalid”);return;}
+        System.out.print(“Payment received? (y/n): “); boolean p=sc.nextLine().trim().equalsIgnoreCase(“y”);
+        System.out.println(a.settlePayment(p));
+        If(p){Settlement s=new Settlement(a.getWinner(),a.getWinner().getWinningBid().getAmount()); settlements.add(s); System.out.println(s);}
+    }
+    Void display() {
+        If(auctions.isEmpty()){System.out.println(“None”);return;}
+        Auctions.forEach(a->{System.out.println(a); a.getBids().forEach(b->System.out.println(“  “+b)); if(a.getWinner()!=null)System.out.println(“  “+a.getWinner()); if(a.isSettled())System.out.println(“  Settled”);});
+    }
+    LocalDateTime parseDT(String s){
+        Try{return LocalDateTime.parse(s,dtf);}catch(DateTimeParseException e){System.out.println(“Invalid date”);return LocalDateTime.now();}
+    }
+}
